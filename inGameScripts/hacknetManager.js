@@ -1,6 +1,16 @@
 const PROGRAM_NAME = "hacknetManager:"
 
 /** @param {NS} ns */
+function verboseLog(ns, ...args) {
+	ns.tprint(...args)
+}
+
+/** @param {NS} ns */
+function log(ns, ...args) {
+	ns.tprint(...args)
+}
+
+/** @param {NS} ns */
 function purchaseNode(ns, minimumMoney) {
 	// Snatch up as many early game nodes as possible
 	const moneyAvailable = ns.getPlayer().money
@@ -13,7 +23,7 @@ function purchaseNode(ns, minimumMoney) {
 	}
 
 	if (nodeCount !== null) {
-		console.log(PROGRAM_NAME, "purchased node", nodeCount)
+		verboseLog(ns, PROGRAM_NAME, "purchased node", nodeCount)
 	}
 }
 
@@ -72,19 +82,19 @@ function upgradeNodes(ns, minimumMoney) {
 
 	if (upgradeType === "ram") {
 		if (ns.hacknet.upgradeRam(cheapestNode, 1)) {
-			console.log(PROGRAM_NAME, "upgraded RAM for node", cheapestNode, "cost", minCost)
+			verboseLog(ns, PROGRAM_NAME, "upgraded RAM for node", cheapestNode, "cost", minCost)
 		}
 	}
 
 	if (upgradeType === "levels") {
 		if (ns.hacknet.upgradeLevel(cheapestNode, levelUpgradeCount)) {
-			console.log(PROGRAM_NAME, "upgraded level", levelUpgradeCount, "time(s) for node", cheapestNode, "cost", minCost)
+			verboseLog(ns, PROGRAM_NAME, "upgraded level", levelUpgradeCount, "time(s) for node", cheapestNode, "cost", minCost)
 		}
 	}
 
 	if (upgradeType === "core") {
 		if (ns.hacknet.upgradeCore(cheapestNode, 1)) {
-			console.log(PROGRAM_NAME, "upgraded core for node", cheapestNode, "cost", minCost)
+			verboseLog(ns, PROGRAM_NAME, "upgraded core for node", cheapestNode, "cost", minCost)
 		}
 	}
 }
@@ -106,8 +116,8 @@ export async function main(ns) {
 	const percentMinimumMoneyIncreasePerMinute = Number(ns.args[1]) || 1
 	const increaseMinimumMoneyForUpgradePercentage = Number(ns.args[1]) || 10
 	const growthRate = (100 + percentMinimumMoneyIncreasePerMinute) / 100
-	console.log(PROGRAM_NAME, "starting hacknet manager. will leave you $", minimumMoney)
-	console.log(PROGRAM_NAME, "in one hour, minimum will be $", minimumMoney * Math.pow(growthRate, 60))
+	log(ns, PROGRAM_NAME, "starting hacknet manager. will leave you $", minimumMoney)
+	log(ns, PROGRAM_NAME, "in one hour, minimum will be $", minimumMoney * Math.pow(growthRate, 60))
 
 	const start = (new Date()).getTime()
 	let iterations = 0
@@ -118,8 +128,8 @@ export async function main(ns) {
 			if (!(ns.getPlayer().money < minimumMoney)) {
 				minimumMoney = minimumMoney * growthRate
 				if (iterations % (60 * 1000 / cadence) === 0) {
-					console.log(PROGRAM_NAME, "minimum is now", minimumMoney)
-					console.log(PROGRAM_NAME, "in one hour, minimum will be $", minimumMoney * Math.pow(growthRate, 60))
+					log(ns, PROGRAM_NAME, "minimum is now", minimumMoney)
+					log(ns, PROGRAM_NAME, "in one hour, minimum will be $", minimumMoney * Math.pow(growthRate, 60))
 				}
 			}
 		}
@@ -134,3 +144,4 @@ export async function main(ns) {
 		iterations += 1
 	}
 }
+
