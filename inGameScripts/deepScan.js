@@ -1,136 +1,77 @@
-const PROGRAM_NAME = "hacknetManager:"
+const visited = new Set()
+let maxDepth = 0
 
-/** @param {NS} ns */
-function purchaseNode(ns, minimumMoney) {
-	// Snatch up as many early game nodes as possible
-	const moneyAvailable = ns.getPlayer().money
-	const cost = ns.hacknet.getPurchaseNodeCost()
-
-	let nodeCount = null
-
-	if (!(moneyAvailable - cost < minimumMoney)) {
-		nodeCount = ns.hacknet.purchaseNode()
+function status(rootAccess, couldHack, worthWhileHack, broke) {
+	if (worthWhileHack) {
+		if (broke) {
+			return "broke"
+		}
+		return "HACKd"
+	} else if (rootAccess) {
+		return "ROOT"
+	} else if (couldHack) {
+		return "NEXT"
 	}
-
-	if (nodeCount !== null) {
-		console.log(PROGRAM_NAME, "purchased node", nodeCount)
-	}
+	return ""
 }
 
 /** @param {NS} ns */
-function upgradeNodes(ns, minimumMoney) {
-	// Consider and buy this many level upgrades at once
-	const maxLevelUpgradeCount = 15
-	let levelUpgradeCount = maxLevelUpgradeCount
+function isHackingWorthwhile(ns, host) {
+	return ns.getServerMaxMoney(host) > 0 && ns.getServerRequiredHackingLevel(host) <= ns.getPlayer().hacking
+}
 
-	const cheapLevelThreshold = 4000
+/** @param {NS} ns */
+function findCCTFiles(ns, host) {
+	return ns.ls(host, "cct").join(", ")
+}
 
-	let upgradeType = null
-	let cheapestNode = -1
-	let minCost = Infinity
-	for (let nodeIx = 0; nodeIx < ns.hacknet.numNodes(); nodeIx++) {
-		const ramCost = ns.hacknet.getRamUpgradeCost(nodeIx, 1)
-		const coreCost = ns.hacknet.getCoreUpgradeCost(nodeIx, 1)
-		const levelsCost = ns.hacknet.getLevelUpgradeCost(nodeIx, levelUpgradeCount)
-		const level1Cost = ns.hacknet.getLevelUpgradeCost(nodeIx, 1)
-		if (ramCost < minCost) {
-			minCost = ramCost
-			upgradeType = "ram"
-			cheapestNode = nodeIx
-		}
+/** @param {NS} ns */
+export async function deepScan(ns, host, depth) {
+	const depthIndicator = (new Array(depth + 1)).fill("").join("-")
+	const hostStatus = status(
+		ns.hasRootAccess(host),
+		ns.getHackingLevel() >= ns.getServerRequiredHackingLevel(host),
+		isHackingWorthwhile(ns, host),
+		ns.getServerMoneyAvailable(host) < 1000
+	)
+	ns.tprintf(
+		"%s %-" + (25 + maxDepth - depth) + "s %4sGB %5s %4f Δ%-4f %4s $%-18.2f   %5.1f %7.2f%% %s",
+		depthIndicator,
+		host,
+		ns.getServerMaxRam(host),
+		hostStatus,
+		ns.getServerRequiredHackingLevel(host),
+		Math.max(ns.getServerRequiredHackingLevel(host) - ns.getPlayer().hacking, 0),
+		ns.getServerNumPortsRequired(host),
+		ns.getServerMoneyAvailable(host),
+		ns.getServerSecurityLevel(host),
+		100 * ns.getServerSecurityLevel(host) / ns.getServerMinSecurityLevel(host),
+		findCCTFiles(ns, host)
+	)
 
-		if (level1Cost < cheapLevelThreshold) {
-			levelUpgradeCount = 1
+	visited.add(host)
 
-			if (level1Cost < minCost) {
-				minCost = level1Cost
-				upgradeType = "levels"
-				cheapestNode = nodeIx
-			}
-
-		} else {
-			levelUpgradeCount = maxLevelUpgradeCount
-		}
-
-		if (levelsCost < minCost) {
-			minCost = levelsCost
-			upgradeType = "levels"
-			cheapestNode = nodeIx
-		}
-
-		if (coreCost < minCost) {
-			minCost = coreCost
-			upgradeType = "core"
-			cheapestNode = nodeIx
-		}
-	}
-
-	const moneyAvailable = ns.getPlayer().money
-	if (moneyAvailable - minCost < minimumMoney) {
+	if (depth >= maxDepth) {
 		return
 	}
 
-	if (upgradeType === "ram") {
-		if (ns.hacknet.upgradeRam(cheapestNode, 1)) {
-			console.log(PROGRAM_NAME, "upgraded RAM for node", cheapestNode, "cost", minCost)
-		}
-	}
-
-	if (upgradeType === "levels") {
-		if (ns.hacknet.upgradeLevel(cheapestNode, levelUpgradeCount)) {
-			console.log(PROGRAM_NAME, "upgraded level", levelUpgradeCount, "time(s) for node", cheapestNode, "cost", minCost)
-		}
-	}
-
-	if (upgradeType === "core") {
-		if (ns.hacknet.upgradeCore(cheapestNode, 1)) {
-			console.log(PROGRAM_NAME, "upgraded core for node", cheapestNode, "cost", minCost)
+	const hosts = await ns.scan(host)
+	for (const host of hosts) {
+		if (!visited.has(host)) {
+			await deepScan(ns, host, depth + 1)
 		}
 	}
 }
 
 /** @param {NS} ns */
 export async function main(ns) {
-	/*
-	run these steps periodically:
-
-	1. purchase a node if you have "enough money"
-	   you have enough money if your total money
-	   is high enough
-	2. for each machine:
-	   1. if 1 level is very cheap, purchase it
-	   1. otherwise if 10 levels cost less than the RAM, purchase 10 levels
-	   2. otherwise purchase RAM
-	*/
-	let minimumMoney = Number(ns.args[0]) || 1000000
-	const percentMinimumMoneyIncreasePerMinute = Number(ns.args[1]) || 1
-	const increaseMinimumMoneyForUpgradePercentage = Number(ns.args[1]) || 10
-	const growthRate = (100 + percentMinimumMoneyIncreasePerMinute) / 100
-	console.log(PROGRAM_NAME, "starting hacknet manager. will leave you $", minimumMoney)
-	console.log(PROGRAM_NAME, "in one hour, minimum will be $", minimumMoney * Math.pow(growthRate, 60))
-
-	const start = (new Date()).getTime()
-	let iterations = 0
-	const cadence = 10
-
-	while (true) {
-		if (iterations % (60 * 1000 / cadence) === 0) {
-			if (!(ns.getPlayer().money < minimumMoney)) {
-				minimumMoney = minimumMoney * growthRate
-				if (iterations % (60 * 1000 / cadence) === 0) {
-					console.log(PROGRAM_NAME, "minimum is now", minimumMoney)
-					console.log(PROGRAM_NAME, "in one hour, minimum will be $", minimumMoney * Math.pow(growthRate, 60))
-				}
-			}
-		}
-
-		purchaseNode(ns, minimumMoney)
-		await ns.sleep(cadence / 2)
-
-		const minimumMoneyForUpgrades = minimumMoney * (100 + increaseMinimumMoneyForUpgradePercentage) / 100
-		upgradeNodes(ns, minimumMoneyForUpgrades)
-		await ns.sleep(cadence / 2)
-
-		iterations += 1
+	if (!(ns.args.length == 2 || ns.args.length == 1)) {
+		ns.tprint("USAGE: $0 DEPTH [START_HOST]")
+		return
 	}
+	maxDepth = ns.args[0]
+	const startHost = ns.args[1] || "home"
+
+	visited.clear()
+	await deepScan(ns, startHost, 0)
 }
