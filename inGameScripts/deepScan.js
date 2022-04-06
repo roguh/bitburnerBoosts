@@ -35,10 +35,11 @@ export async function deepScan(ns, host, depth) {
 		ns.getServerMoneyAvailable(host) < 1000
 	)
 	ns.tprintf(
-		"%s %-" + (25 + maxDepth - depth) + "s %4sGB %5s %4f %-4s %4s $%-18.2f   %5.1f %7.2f%% %5.2f%% %s",
+		"%s %-" + (25 + maxDepth - depth) + "s %4sGB %5.2f%% %5s %4f %-4s %4s $%-18.2f   %5.1f %7.2f%% %s",
 		depthIndicator,
 		host,
 		ns.getServerMaxRam(host),
+		ns.getServerUsedRam(host) / ns.getServerMaxRam(host) * 100,
 		hostStatus,
 		ns.getServerRequiredHackingLevel(host),
 		(n => n > 0 ? 'Δ' + n : '')(Math.max(ns.getServerRequiredHackingLevel(host) - ns.getPlayer().hacking, 0)),
@@ -46,7 +47,6 @@ export async function deepScan(ns, host, depth) {
 		ns.getServerMoneyAvailable(host),
 		ns.getServerSecurityLevel(host),
 		100 * ns.getServerSecurityLevel(host) / ns.getServerMinSecurityLevel(host),
-		ns.getServerUsedRam(host) / ns.getServerMaxRam(host) * 100,
 		findCCTFiles(ns, host)
 	)
 
@@ -76,4 +76,3 @@ export async function main(ns) {
 	visited.clear()
 	await deepScan(ns, startHost, 0)
 }
-
