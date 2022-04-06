@@ -7,7 +7,7 @@ async function plook(ns, target) {
 		const start = new Date()
 		const value = await ns.hack(target)
 		const duration = ((new Date()) - start) / 1000
-		console.log(PROGRAM_NAME, "hacked", target, "for", value, "after", Math.round(duration / 60), "minutes", duration % 60, "seconds")
+		//console.log(PROGRAM_NAME, "hacked", target, "for", value, "after", Math.round(duration / 60), "minutes", duration % 60, "seconds")
 	}
 }
 

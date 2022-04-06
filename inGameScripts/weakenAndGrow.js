@@ -5,7 +5,7 @@ async function plook(ns, target) {
 	await ns.weaken(target);
 	await ns.grow(target);
 	// TODO print runtime
-	console.log(PROGRAM_NAME, "weakened and growed", target)
+	//console.log(PROGRAM_NAME, "weakened and growed", target)
 }
 
 /** @param {NS} ns */

@@ -3,7 +3,7 @@ const PROGRAM_NAME = "weaken:"
 /** @param {NS} ns */
 async function plook(ns, target) {
 	await ns.weaken(target);
-	console.log(PROGRAM_NAME, "weakened", target)
+	//console.log(PROGRAM_NAME, "weakened", target)
 }
 
 /** @param {NS} ns */
